@@ -1,4 +1,21 @@
 -Wall
--L/usr/local/lib
--I/usr/include/cairo .
--lfmt
+-I 
+/usr/include/cairo/
+-I
+/usr/include/libpng16
+-I
+/usr/include/freetype2]
+-I
+/usr/include/harfbuzz
+-I
+/usr/include/glib-2.0
+-I
+/usr/lib64/glib-2.0/include
+-I
+/usr/include/sysprof-4
+-I
+/usr/include/libxml2
+-pthread
+-I
+/usr/include/pixman-1
+-lcairo 
