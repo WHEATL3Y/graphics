@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -o main $(pkg-config --cflags --libs cairo) main.c
+gcc -o main -I /usr/include/cairo/ main.c -l cairo -lX11
