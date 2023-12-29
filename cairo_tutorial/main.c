@@ -1,9 +1,12 @@
-// Cairo Hello World Tutorial
+// Cairo Basic X11 Tutorial
 //
 // Author: Jacob Christensen
+//
 // References: 
+//  https://tronche.com/gui/x/xlib/
 //  https://www.cairographics.org/FAQ/
 //  https://www.cairographics.org/tutorial/
+//  https://gitlab.com/cairo/cairo-demos/-/blob/master/X11/cairo-demo.c?ref_type=heads
 
 #include <X11/Xlib.h>
 #include <cairo.h>
@@ -13,61 +16,104 @@
 #include <math.h>
 #include <stdlib.h>
 
-Display *dsp;
+#define WINDOW_HEIGHT 1000
+#define WINDOW_WIDTH 1000
 
-cairo_surface_t *cairo_create_x11_surface0(int x, int y) {
+void drawCircle(cairo_t *, double, double, double, double);
 
-    Drawable da;
-    int screen;
-    cairo_surface_t *sfc;
+void drawCircle(cairo_t *cxt, double radius, double r, double g, double b) {
 
-    if ((dsp = XOpenDisplay(NULL)) == NULL) {
-        printf("Error, closing");
-        exit(1);
-    }
+    cairo_set_source_rgb(cxt, r, g, b);
+    cairo_arc(cxt, 500.0, 500.0, radius, 0.0, 2 * M_PI);
+    cairo_fill(cxt);
 
-    screen = DefaultScreen(dsp);
-    da = XCreateSimpleWindow(dsp, DefaultRootWindow(dsp),
-        0, 0, x, y, 0, 0, 0);
-    XSelectInput(dsp, da, ButtonPressMask | KeyPressMask);
-    XMapWindow(dsp, da);
-
-    sfc = cairo_xlib_surface_create(dsp, da,
-        DefaultVisual(dsp, screen), x, y);
-    cairo_xlib_surface_set_size(sfc, x, y);
-
-    return sfc;
 }
 
 int main(void) {
 
+    Display *dsp;                   // X Server Connection
+    int screen;                     // Screen number
+    Drawable da;                    // X11 Drawable (Window)
     cairo_surface_t *surface;       // Surface
-    cairo_t         *cr;            // Context
+    cairo_t         *context;       // Context
 
-    surface = cairo_create_x11_surface0(1000, 1000);
-    cr = cairo_create(surface);
+    // Open connection to X Server
+    dsp = XOpenDisplay(NULL);
+    if (dsp == NULL) {
+        printf("Error: Can't open connection to X Server");
+        exit(1);
+    }
+
+    // Get screen number
+    screen = DefaultScreen(dsp);
+
+    // Create Window
+    da = XCreateSimpleWindow(
+            dsp,
+            DefaultRootWindow(dsp),
+            0,
+            0,
+            WINDOW_WIDTH,
+            WINDOW_HEIGHT,
+            0,
+            0,
+            0x00ffffff
+    );
+
+    // Specify what events we want to receive from X Server
+    XSelectInput(dsp, da, ExposureMask | KeyPressMask);
+
+    // Map Window so it's viewable on the screen (...I Think)
+    XMapWindow(dsp, da);
+
+    // Create cairo surface
+    surface = cairo_xlib_surface_create(
+            dsp,
+            da,
+            DefaultVisual(dsp, screen),
+            WINDOW_HEIGHT,
+            WINDOW_WIDTH
+    );
+    cairo_xlib_surface_set_size(surface, WINDOW_HEIGHT, WINDOW_WIDTH);
     
-    /* cairo_set_source_rgb(cr, 0.0, 0.0, 1.0); */
-    /* cairo_rectangle(cr, 0.0, 0.0, 1000.0, 1000.0); */
-    /* cairo_fill(cr); */
-
+    // Create Context
+    context = cairo_create(surface);
+    
     XEvent xev;
     double r = 1.0;
     double g = 0.0;
     double b = 0.0;
+
     while(1) {
 
         XNextEvent(dsp, &xev);
-        printf("Event Type: %d\n", xev.type);
-        cairo_set_source_rgb(cr, r, g, b);
-        cairo_arc(cr, 500.0, 500.0, 200, 0.0, 2 * M_PI);
-        cairo_fill(cr);
+        switch (xev.type) {
+            case KeyPress:
+                // Toggle color of circle, or quit if q is pressed
+                // TODO: Find out why keycode and XStringToKeysym("Q")
+                //  doesn't work
+                if (xev.xkey.keycode == 24) {
+                    cairo_destroy(context);
+                    cairo_surface_destroy(surface);
+                    XDestroyWindow(dsp, screen);
+                    exit(0);
+                }
+                else {
+                    // Toggle color and re-draw
+                    r = r ? 0.0 : 1.0;
+                    b = b ? 0.0 : 1.0;
+                    drawCircle(context, 200, r, g, b);
+                }
+                break;
 
-        r = r ? 0.0 : 1.0;
-        b = b ? 0.0 : 1.0;
+            case Expose:
+                // Draw initial circle when window is started by X
+                drawCircle(context, 200, r, g, b);
+                break;
+        }
+
     }
-    cairo_destroy(cr);
-    cairo_surface_destroy(surface);
 
     return EXIT_SUCCESS;
+
 }
